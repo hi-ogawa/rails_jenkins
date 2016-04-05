@@ -1,0 +1,29 @@
+---
+# https://docs.mongodb.org/v3.0/tutorial/install-mongodb-on-ubuntu/
+# $ mongod --version
+# db version v3.0.7
+# git version: 6ce7cbe8c6b899552dadd907604559806aa2e9bd
+
+- name: set mongodb apt key
+  apt_key: id=7F0CEB10 keyserver=keyserver.ubuntu.com state=present
+
+- name: set mongodb apt repository
+  apt_repository:
+    repo: 'deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.0 multiverse'
+    filename: mongodb-org-3.0
+    state: present
+
+- name: apt-get update
+  apt: update_cache=yes cache_valid_time=36000
+
+- name: install mongodb
+  apt: name={{ item }}={{ mongodb.version }} state=present
+  with_items:
+    - mongodb-org
+    - mongodb-org-server
+    - mongodb-org-shell
+    - mongodb-org-mongos
+    - mongodb-org-tools
+
+- name: start mongodb
+  service: name=mongod state=started

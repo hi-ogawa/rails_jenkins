@@ -1,0 +1,14 @@
+---
+ruby:
+  download_url: http://ftp.ruby-lang.org/pub/ruby/2.2/ruby-2.2.3.tar.gz
+  version: 2.2.3
+elasticsearch:
+  download_url: https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.2.deb
+  version: 1.7.2
+redis:
+  download_url: http://download.redis.io/releases/redis-3.0.4.tar.gz
+  version: 3.0.4
+  port: 6379
+mongodb:
+  version: 3.0.7
+nginx_server_name: ec2-52-192-232-116.ap-northeast-1.compute.amazonaws.com

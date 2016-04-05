@@ -1,0 +1,32 @@
+- hosts: all
+  user: ubuntu
+  become: yes
+  vars_files:
+    - vars_main.yml
+    - vars_secret.yml
+  tasks:
+    # common
+    - name: apt-get update
+      apt: update_cache=yes cache_valid_time=36000
+
+    - name: install common libraries
+      apt: name={{ item }} state=present
+      with_items:
+        - git-core
+        - htop
+        - build-essential
+
+    # jenkins
+    - include: tasks_jenkins.yml
+
+    # ruby/rails
+    - include: tasks_ruby.yml
+
+    - name: install ruby gems
+      gem: name={{ item }} state=present user_install=no
+      with_items:
+        - bundler
+
+    - include: tasks_elasticsearch.yml
+    - include: tasks_redis.yml
+    - include: tasks_mongodb.yml

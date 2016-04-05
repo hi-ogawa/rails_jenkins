@@ -1,0 +1,38 @@
+---
+# https://www.digitalocean.com/community/tutorials/how-to-install-and-use-redis
+# $ redis-server --version
+# Redis server v=3.0.4 sha=00000000:0 malloc=jemalloc-3.6.0 bits=64 build=52d54e013a0c07a8
+
+- name: download redis source
+  unarchive:
+    src: "{{ redis.download_url }}"
+    dest: /home/ubuntu/
+    copy: no
+
+- name: install redis
+  shell: >
+    {{ item }}
+    chdir=/home/ubuntu/redis-{{ redis.version }}
+    creates=/usr/local/bin/redis-cli
+  with_items:
+    - make
+    - sudo make install
+
+- name: make redis system directories
+  file: path={{ item }} state=directory
+  with_items:
+    - /etc/redis
+    - /var/redis
+    - /var/redis/{{ redis.port }}
+
+- name: copy redis init script
+  template: src=templates/redis_init_script.j2 dest=/etc/init.d/redis_{{ redis.port }} mode=744
+
+- name: copy redis conf
+  template: src=templates/redis.conf.j2 dest=/etc/redis/{{ redis.port }}.conf
+
+- name: initialize redis init script
+  command: update-rc.d redis_{{ redis.port }} defaults
+
+- name: start redis
+  service: name=redis_{{ redis.port }} state=started

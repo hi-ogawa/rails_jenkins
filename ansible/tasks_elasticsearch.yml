@@ -1,0 +1,20 @@
+---
+# https://www.digitalocean.com/community/tutorials/how-to-install-and-configure-elasticsearch-on-ubuntu-14-04
+# $ elasticsearch -v
+# Version: 1.7.2, Build: e43676b/2015-09-14T09:49:53Z, JVM: 1.8.0_60
+
+- name: install java
+  apt: name={{ item }} state=present
+  with_items:
+    - openjdk-7-jre
+
+- name: download elasticsearch.deb
+  get_url:
+    url: "{{ elasticsearch.download_url }}"
+    dest: /home/ubuntu/
+
+- name: install elasticsearch
+  apt: deb=/home/ubuntu/elasticsearch-{{ elasticsearch.version }}.deb
+
+- name: start elasticsearch
+  service: name=elasticsearch state=started

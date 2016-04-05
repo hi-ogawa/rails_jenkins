@@ -1,0 +1,103 @@
+---
+- name: set jenkins apt key
+  apt_key: url='http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key' state=present
+
+- name: set jenkins apt repository
+  apt_repository: repo='deb http://pkg.jenkins-ci.org/debian binary/' state=present
+
+- name: apt-get update
+  apt: update_cache=yes cache_valid_time=36000
+
+- name: install java
+  apt: name={{ item }} state=present
+  with_items:
+    - openjdk-7-jre
+    - openjdk-7-jdk
+
+- name: install jenkins
+  apt: name={{ item }} state=present
+  with_items:
+    - jenkins
+
+- name: set jenkins config.xml with no security
+  template:
+    src: templates/config.xml.j2
+    dest: /var/lib/jenkins/config.xml
+    owner: jenkins
+    group: jenkins
+  vars:
+    allowed_user: 'anonymous'
+    disable_signup: 'false'
+    use_security: 'true'
+
+- name: restart jenkins for later cli commands
+  service: name=jenkins state=restarted
+
+# jenkins server api/cli doesn't work unless wait 10 sec
+- wait_for: port=8080 delay=10 timeout=60
+
+- name: install jenkins cli
+  get_url:
+    url: http://localhost:8080/jnlpJars/jenkins-cli.jar
+    dest: /var/lib/jenkins/jenkins-cli.jar
+    owner: jenkins
+    group: jenkins
+
+- name: create jenkins master user
+  shell: >
+    echo 'jenkins.model.Jenkins.instance.securityRealm.createAccount("{{ jenkins_master_user.username }}", "{{ jenkins_master_user.password }}")' |
+    java -jar /var/lib/jenkins/jenkins-cli.jar -s http://localhost:8080/ groovy =
+  args:
+    executable: /bin/bash
+
+- name: install jenkins plugins
+  command: java -jar /var/lib/jenkins/jenkins-cli.jar -s http://localhost:8080 install-plugin {{ item }}
+  args:
+    creates: /var/lib/jenkins/plugins/{{ item }}.jpi
+  with_items:
+    - git
+    - github
+    - slack
+    - ghprb
+    - embeddable-build-status
+
+- name: set jenkins config.xml
+  template:
+    src: templates/config.xml.j2
+    dest: /var/lib/jenkins/config.xml
+    owner: jenkins
+    group: jenkins
+  vars:
+    allowed_user: '{{ jenkins_master_user.username }}'
+    disable_signup: 'true'
+    use_security: 'true'
+
+- name: restart jenkins
+  service: name=jenkins state=restarted
+
+# nginx proxy for open jenkins on 80
+- name: install nginx
+  apt: name=nginx state=present
+
+- name: remove default nginx config
+  file: path={{ item }} state=absent
+  with_items:
+    - /etc/nginx/sites-available/default
+    - /etc/nginx/sites-enabled/default
+
+- name: jenkins proxy configuarion available
+  template:
+    src: templates/jenkins.conf.j2
+    dest: /etc/nginx/sites-available/jenkins.conf
+  vars:
+    server_name: '{{ nginx_server_name }}'
+
+- name: enable jenkins proxy
+  file:
+    src: '/etc/nginx/sites-available/jenkins.conf'
+    path: '/etc/nginx/sites-enabled/jenkins.conf'
+    state: link
+    force: yes
+
+- name: restart nginx
+  service: name=nginx state=restarted
